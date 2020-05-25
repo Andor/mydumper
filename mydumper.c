@@ -325,7 +325,6 @@ void set_verbose(guint verbosity) {
       g_log_set_handler(
           NULL,
           (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
-                           G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
                            G_LOG_LEVEL_CRITICAL),
           write_log_file, NULL);
     break;

@@ -101,6 +101,11 @@ void set_verbose(guint verbosity) {
     g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE), no_log,
                       NULL);
     break;
+  case 4:
+    g_log_set_handler(NULL,
+                      (GLogLevelFlags)(G_LOG_LEVEL_DEBUG | G_LOG_LEVEL_INFO | G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL),
+                      no_log, NULL);
+    break;
   default:
     break;
   }
@@ -149,22 +154,28 @@ int main(int argc, char *argv[]) {
     g_critical("a directory needs to be specified, see --help\n");
     exit(EXIT_FAILURE);
   } else {
+    g_debug("Checking for %s/metadata file", directory);
     char *p = g_strdup_printf("%s/metadata", directory);
     if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
       g_critical("the specified directory is not a mydumper backup\n");
       exit(EXIT_FAILURE);
     }
   }
+  g_debug("Mysql client init");
   MYSQL *conn;
   conn = mysql_init(NULL);
 
+  g_debug("Mysql configure connection");
   configure_connection(conn, "myloader");
+
+  g_debug("Mysql connect");
   if (!mysql_real_connect(conn, hostname, username, password, NULL, port,
                           socket_path, 0)) {
     g_critical("Error connection to database: %s", mysql_error(conn));
     exit(EXIT_FAILURE);
   }
 
+  g_debug("Trying to set mysql session timeout");
   if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
     g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
   }
@@ -172,11 +183,13 @@ int main(int argc, char *argv[]) {
   if (!enable_binlog)
     mysql_query(conn, "SET SQL_LOG_BIN=0");
 
+  g_debug("mysql disabling foreigh key checks");
   mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   conf.queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
 
   guint n;
+  g_debug("Spawning %d threads", num_threads);
   GThread **threads = g_new(GThread *, num_threads);
   struct thread_data *td = g_new(struct thread_data, num_threads);
   for (n = 0; n < num_threads; n++) {
